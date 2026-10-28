@@ -552,7 +552,10 @@ function tween(to, dur, done){
   (function step(now){
     var p = clamp((now-t0)/dur,0,1);
     scroller.scrollTop = from + (to-from)*EASE_TWEEN(p);
-    if(p<1){ tw.raf = requestAnimationFrame(step); } else { S.tw=null; S.lockUntil = performance.now()+120; if(done)done(); settle(); if(S.queued){ var q=S.queued; S.queued=0; stepDir(q); } }
+    if(p<1){ tw.raf = requestAnimationFrame(step); } else { S.tw=null; S.lockUntil = performance.now()+120; if(done)done(); settle();
+      // Если браузер пропустил последнюю установку прокрутки, кадр встаёт на место ещё раз.
+      setTimeout(function(){ if(!S.tw && Math.abs(scroller.scrollTop - to) > 2){ scroller.scrollTop = to; render(); settle(); } }, 60);
+      if(S.queued){ var q=S.queued; S.queued=0; stepDir(q); } }
   })(t0);
 }
 function durFor(a,b){
@@ -631,19 +634,17 @@ function onTouchMove(e){
   if(S.rm || tY===null || tOnScale) return;
   var dy = tY - e.touches[0].clientY;
   var dx = tX - e.touches[0].clientX;
-  if(!inFree()){
-    e.preventDefault();
-    if(!tFired && Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)){ tFired=true; var d=dy>0?1:-1; if(S.tw) S.queued=d; else stepDir(d); }
-    return;
-  }
-  if(scroller.scrollTop <= FREE+1 && dy < 0){ e.preventDefault(); if(!tFired && dy < -28){ tFired=true; if(S.tw) S.queued=-1; else goTo(STOPS.length-2); } }
+  // Палец ещё на экране: только не даём странице ехать. Кадр меняется в touchend — Safari на iPhone
+  // может не применять программную прокрутку, пока палец не отпущен, и кадр «не реагировал».
+  if(!inFree()){ e.preventDefault(); return; }
+  if(scroller.scrollTop <= FREE+1 && dy < 0) e.preventDefault();
 }
 function onTouchEnd(e){
-  if(S.rm || tY===null || tOnScale || tFired){ tY=null; return; }
+  if(S.rm || tY===null || tOnScale){ tY=null; return; }
   var t = e.changedTouches[0], dy = tY - t.clientY, dx = tX - t.clientX; tY=null;
   // Короткий или медленный свайп тоже листает: достаточно 8px по вертикали.
   if(Math.abs(dy) < 8 || Math.abs(dy) < Math.abs(dx)) return;
-  if(inFree()){ if(dy<0 && scroller.scrollTop <= FREE+1) goTo(STOPS.length-2); return; }
+  if(inFree()){ if(dy < -20 && scroller.scrollTop <= FREE+1) goTo(STOPS.length-2); return; }
   if(S.tw){ S.queued = dy>0?1:-1; return; }
   stepDir(dy>0?1:-1);
 }
