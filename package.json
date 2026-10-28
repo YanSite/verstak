@@ -1,0 +1,10 @@
+{
+  "name": "@demo/verstak",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Концепт «Верстак»: статический сайт, публикуется из зеркала YanSite/verstak.",
+  "scripts": {
+    "dev": "serve -l 4106 --no-clipboard .",
+    "build": "node ../../../tools/demo/check-static.mjs ."
+  }
+}
