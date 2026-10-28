@@ -606,11 +606,18 @@ function onScroll(){
     if(Math.abs(STOPS[idx].px - y) > 2) tween(STOPS[idx].px, S.lite?400:600); else settle();
   }, 170);
 }
-var wheelAcc=0, lastWheel=0, gestureUsed=false;
+var wheelAcc=0, lastWheel=0, gestureUsed=false, lastAbs=0, decay=0, lastStepAt=0;
 function onWheel(e){
   if(S.rm || S.cardOpen) return;
   var now = performance.now(), gap = now - lastWheel; lastWheel = now;
-  if(gap > 140){ wheelAcc = 0; gestureUsed = false; }   // a new gesture; inertia keeps gaps short
+  // Новый жест: пауза в событиях или снова растущая сила прокрутки после затухания инерции.
+  // Инерция трекпада идёт непрерывно секунду-две, и следующий свайп, начатый на её хвосте,
+  // раньше сливался со старым — кадр не сдвигался.
+  var ad = Math.abs(e.deltaY);
+  if(ad < lastAbs) decay++; else if(ad > lastAbs) { if(!(decay >= 3 && ad > 6 && ad > lastAbs*1.5)) decay = 0; }
+  var rising = decay >= 3 && ad > 6 && ad > lastAbs*1.5 && now - lastStepAt > 250;
+  lastAbs = ad;
+  if(gap > 140 || rising){ wheelAcc = 0; gestureUsed = false; decay = 0; }
   if(inFree()){
     if(e.deltaY<0 && scroller.scrollTop <= FREE+1){ e.preventDefault(); if(!gestureUsed){ gestureUsed=true; if(S.tw) S.queued=-1; else goTo(STOPS.length-2);} }
     return;
@@ -619,7 +626,7 @@ function onWheel(e){
   if(gestureUsed) return;
   wheelAcc += e.deltaY;
   if(Math.abs(wheelAcc) > 18){
-    var d = wheelAcc>0?1:-1; wheelAcc=0; gestureUsed=true;
+    var d = wheelAcc>0?1:-1; wheelAcc=0; gestureUsed=true; lastStepAt = now;
     if(S.tw){ S.queued = d; return; }   // remember one step, take it right after the current frame lands
     stepDir(d);
   }
