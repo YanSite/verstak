@@ -35,7 +35,7 @@
 }
 [hidden]{display:none!important}
 /* Метка «Концепт» — под корзиной справа, не на названии раздела в шапке. */
-html.cc-off concept-card{visibility:hidden}
+html.cc-off concept-card{--cc-top:-200px}
 concept-card{--cc-font:'Ysabeau','PT Sans',system-ui,sans-serif;--cc-top:58px;--cc-right:10px}
 @media (min-width:1000px){concept-card{--cc-top:76px;--cc-right:46px}}
 /* type pairings: a «Верстак» (Spectral + JetBrains Mono), b «Резак» (Piazzolla + IBM Plex Mono), c «Клеймо» (Prata over Spectral + PT Mono), d «Бирка» (Ysabeau + IBM Plex Mono) */
@@ -136,6 +136,7 @@ button{font:inherit;color:inherit}
 .bars b i{position:absolute;inset:0;background:var(--wax);transform-origin:0 50%;transform:scaleX(0)}
 .site.d .bars{gap:6px}.site.d .bars b{width:28px}
 .stitch{position:absolute;left:0;right:0;pointer-events:none}
+.site.m .stitch{display:none}
 
 /* time */
 .tscale{position:relative;height:28px;cursor:grab;touch-action:none}
@@ -792,7 +793,7 @@ function wire(){
   site.addEventListener('touchend', onTouchEnd, {passive:true});
   site.addEventListener('touchcancel', function(){ tY=null; }, {passive:true});
   wireScale();
-  // Бейдж «Концепт» не висит поверх открытых корзины и меню.
+  // Бейдж «Концепт» уезжает за экран, пока открыты корзина и меню; окно карточки (например, при «Оформить») работает как обычно.
   var ccSync = function(){ var mn=$('#menu'); document.documentElement.classList.toggle('cc-off', !$('#cartSheet').hidden || (!!mn && !mn.hidden)); };
   var ccObs = new MutationObserver(ccSync);
   ['#cartSheet','#menu'].forEach(function(q){ var el=$(q); if(el) ccObs.observe(el,{attributes:true,attributeFilter:['hidden']}); });
@@ -809,7 +810,10 @@ function wire(){
     if(t.id==='hudMenu'){ var mn=$('#menu'); mn.hidden=false; S.lastFocus=t; mn.querySelector('button').focus(); return; }
     if(t.id==='menuClose'){ $('#menu').hidden=true; t===document.activeElement && $('#hudMenu').focus(); return; }
     if(t.id==='cardBack'){ closeCard(); return; }
-    if(t.classList.contains('add')){ addToCart(); return; }
+    if(t.classList.contains('add')){ addToCart();
+      // Мобилка: вещь в корзине — карточка уезжает наверх и открывается корзина.
+      if(S.mode==='m'){ var cd=$('#card'); cd.scrollTo({top:0,behavior:S.rm?'auto':'smooth'}); setTimeout(openCart, S.rm?0:450); }
+      return; }
     if(t.hasAttribute('data-back')){ closeCard(t.getAttribute('data-back')); return; }
     if(t.hasAttribute('data-go')){ var mnu=$('#menu'); if(mnu) mnu.hidden=true; goToId(t.getAttribute('data-go')); return; }
     if(t.classList.contains('open-item') || t.classList.contains('tile')){
