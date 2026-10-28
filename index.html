@@ -258,10 +258,12 @@ var STEPS = [
 ];
 var BUY = [['Доставка','По России за 2–7 дней, бесплатно от 10 000 ₽. По Москве — курьером на следующий день.'],['Уход','Сухая ткань и немного воска раз в полгода. Подробнее — в карточке вещи.'],['Ремонт','Шов и торец чиним бесплатно, сколько бы лет ни прошло.'],['Возврат','14 дней, если вещь не носили.']];
 var MATERIAL = [['Кожа','Растительного дубления, 2,2 мм. Её дубят танинами из коры, а не хромом, поэтому она красиво стареет.'],['Шов','Седельный, двумя иглами одной вощёной нитью. Если стежок порвётся, шов не распустится.'],['Торец','Шлифуем, натираем воском и полируем вручную. Не красим.'],['Фурнитура','Латунь без покрытия. Темнеет вместе с кожей.'],['Размер','26 × 19 × 8 см, ремень 110–135 см']];
+/* Карточка вещи: у сумки свой кадр и текст, у остальных — кадр и строка из коллекции. */
+ITEMS.forEach(function(it,i){ it.rub = parseInt(it.price.replace(/\D/g,''),10); it.cardImg = i===0 ? 'bag-now.jpg' : it.img; it.cardLbl = i===0 ? '01 / кожа растительного дубления' : it.detail; it.cardLine = i===0 ? 'Седельный шов, торец отполирован вручную. С годами станет темнее и мягче.' : it.line; });
 var CARE = ['Протирайте сухой мягкой тканью.','Раз в полгода — тонкий слой воска на торцы и шов.','Намокла — пусть сохнет сама, подальше от батареи.','Неглубокую царапину часто можно загладить тёплым пальцем.'];
 
 /* ================= state ================= */
-var S = {mode:'m', lite:false, rm:false, cart:0, tw:null, lockUntil:0, dragging:false, settled:-1, cardOpen:false, from:null};
+var S = {mode:'m', lite:false, rm:false, cart:0, qty:[0,0,0,0], cardItem:0, tw:null, lockUntil:0, dragging:false, settled:-1, cardOpen:false, from:null};
 try{ S.rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){}
 try{
   var cn = navigator.connection || {};
@@ -387,22 +389,22 @@ function cardView(m){
   if(m) return '<div class="card" id="card" hidden tabindex="-1">'+
    '<header class="mono" style="height:64px;padding:0 12px 0 20px;display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:.08em;text-transform:uppercase">'+back+'<div style="display:flex;align-items:center;gap:8px">'+cartBtn+'</div></header>'+
    '<div class="hero-img" id="cardImg" style="width:390px;height:488px">'+img('bag-now.jpg','Сумка через плечо из кожи растительного дубления на дубовом верстаке','')+'</div>'+
-   '<section style="padding:28px 20px 40px;display:flex;flex-direction:column;gap:14px"><p class="mono" style="margin:0;font-size:11px;letter-spacing:.06em;color:var(--oak)">01 / кожа растительного дубления</p><h1 class="h1" style="font-size:38px">Сумка через плечо</h1><p style="margin:0;font-size:18px;line-height:1.45;font-weight:300">Седельный шов, торец отполирован вручную. С годами станет темнее и мягче.</p><p class="mono" style="margin:8px 0 0;font-size:16px">28 000 ₽</p><button class="btn-dark add" style="height:52px">В корзину</button><div class="thread" aria-hidden="true"></div><p class="mono" style="margin:0;font-size:11px;line-height:1.7;letter-spacing:.04em;color:var(--rind)">Шьём под заказ: две-три недели<br>Сшил: Илья</p></section>'+
+   '<section style="padding:28px 20px 40px;display:flex;flex-direction:column;gap:14px"><p class="mono c-lbl" style="margin:0;font-size:11px;letter-spacing:.06em;color:var(--oak)">01 / кожа растительного дубления</p><h1 class="h1 c-title" style="font-size:38px">Сумка через плечо</h1><p class="c-line" style="margin:0;font-size:18px;line-height:1.45;font-weight:300">Седельный шов, торец отполирован вручную. С годами станет темнее и мягче.</p><p class="mono c-price" style="margin:8px 0 0;font-size:16px">28 000 ₽</p><button class="btn-dark add" style="height:52px">В корзину</button><div class="thread" aria-hidden="true"></div><p class="mono" style="margin:0;font-size:11px;line-height:1.7;letter-spacing:.04em;color:var(--rind)">Шьём под заказ: две-три недели<br>Сшил: Илья</p></section>'+
    '<section style="margin:0 20px;padding:28px 0 36px;border-top:1px dashed var(--seam);display:flex;flex-direction:column;gap:18px"><h2 style="font-size:28px">Из чего и как</h2><dl style="margin:0;display:flex;flex-direction:column;gap:14px">'+mat+'</dl><button class="linkline" data-back="st1">Как мы шьём — на главной →</button></section>'+
-   '<section style="margin:0 20px;padding:28px 0 36px;border-top:1px dashed var(--seam);display:flex;flex-direction:column;gap:14px;position:relative"><h2 style="font-size:28px">Эта сумка через годы</h2><p style="margin:0;font-size:17px;line-height:1.5;font-weight:300">Первым потемнеет клапан — его касаются чаще всего. Ремень станет мягче и ляжет по плечу. Углы и торец начнут блестеть.</p>'+mini+'<button class="linkline" data-back="time">Почему кожа так меняется — на главной →</button></section>'+
+   '<section class="c-years" style="margin:0 20px;padding:28px 0 36px;border-top:1px dashed var(--seam);display:flex;flex-direction:column;gap:14px;position:relative"><h2 style="font-size:28px">Эта сумка через годы</h2><p style="margin:0;font-size:17px;line-height:1.5;font-weight:300">Первым потемнеет клапан — его касаются чаще всего. Ремень станет мягче и ляжет по плечу. Углы и торец начнут блестеть.</p>'+mini+'<button class="linkline" data-back="time">Почему кожа так меняется — на главной →</button></section>'+
    '<section style="border-top:1px dashed var(--seam);margin:0 20px"></section>'+
    '<div style="margin-top:28px;width:390px;height:488px;overflow:hidden">'+img('wax.jpg','Руки мастера натирают край сумки воском','width:100%;height:100%;object-fit:cover;display:block')+'</div>'+
    '<section style="padding:28px 20px 36px;display:flex;flex-direction:column;gap:18px"><h2 style="font-size:28px">Уход</h2><ol style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:14px">'+care+'</ol></section>'+
    '<section style="margin:0 20px;padding:28px 0 48px;border-top:1px dashed var(--seam);display:flex;flex-direction:column;gap:12px"><p style="margin:0;font-size:20px;line-height:1.4;font-weight:300;font-style:italic">Если шов разойдётся, напишите нам. Мы знаем эту вещь до последнего стежка.</p><p class="mono" style="margin:0;font-size:11px;letter-spacing:.04em;color:var(--rind)">Шов и торец чиним бесплатно · Москва, пн–сб 11–19</p></section>'+
-   '<div class="stickybar"><div class="thread" aria-hidden="true"></div><div style="height:70px;box-sizing:border-box;padding:0 12px 0 20px;display:flex;justify-content:space-between;align-items:center"><span class="mono" style="font-size:14px">28 000 ₽</span><button class="btn-wax add" style="height:48px;padding:0 22px">В корзину</button></div></div></div>';
+   '<div class="stickybar"><div class="thread" aria-hidden="true"></div><div style="height:70px;box-sizing:border-box;padding:0 12px 0 20px;display:flex;justify-content:space-between;align-items:center"><span class="mono c-price" style="font-size:14px">28 000 ₽</span><button class="btn-wax add" style="height:48px;padding:0 22px">В корзину</button></div></div></div>';
   return '<div class="card" id="card" hidden tabindex="-1">'+
    '<header class="mono" style="height:88px;padding:0 56px;display:flex;justify-content:space-between;align-items:center;font-size:12px;letter-spacing:.08em;text-transform:uppercase"><span>Верстак</span><nav style="display:flex;gap:40px;align-items:center">'+back+'<a href="#" data-back="ws">Мастерская</a><a href="#" data-back="free">Уход</a>'+cartBtn.replace('padding:14px 6px','padding:0')+'</nav></header>'+
    '<section style="display:grid;grid-template-columns:760px minmax(0,1fr);gap:72px;padding-right:56px"><div class="hero-img" id="cardImg" style="width:760px;height:950px">'+img('bag-now.jpg','Сумка через плечо из кожи растительного дубления на дубовом верстаке','')+'</div>'+
-   '<div style="padding-top:40px;display:flex;flex-direction:column;gap:18px"><p class="mono" style="margin:0;font-size:12px;letter-spacing:.06em;color:var(--oak)">01 / кожа растительного дубления</p><h1 class="h1" style="font-size:64px;line-height:1;letter-spacing:-.015em">Сумка через плечо</h1><p style="margin:0;font-size:21px;line-height:1.45;font-weight:300">Седельный шов, торец отполирован вручную. С годами станет темнее и мягче.</p>'+
-   '<div style="margin-top:16px;display:flex;align-items:center;gap:28px"><span class="mono" style="font-size:18px">28 000 ₽</span><div style="display:flex;flex-direction:column;gap:8px"><button class="btn-dark add" style="height:56px;padding:0 40px">В корзину</button><div class="thread" aria-hidden="true"></div></div></div>'+
+   '<div style="padding-top:40px;display:flex;flex-direction:column;gap:18px"><p class="mono c-lbl" style="margin:0;font-size:12px;letter-spacing:.06em;color:var(--oak)">01 / кожа растительного дубления</p><h1 class="h1 c-title" style="font-size:64px;line-height:1;letter-spacing:-.015em">Сумка через плечо</h1><p class="c-line" style="margin:0;font-size:21px;line-height:1.45;font-weight:300">Седельный шов, торец отполирован вручную. С годами станет темнее и мягче.</p>'+
+   '<div style="margin-top:16px;display:flex;align-items:center;gap:28px"><span class="mono c-price" style="font-size:18px">28 000 ₽</span><div style="display:flex;flex-direction:column;gap:8px"><button class="btn-dark add" style="height:56px;padding:0 40px">В корзину</button><div class="thread" aria-hidden="true"></div></div></div>'+
    '<p class="mono" style="margin:0;font-size:12px;line-height:1.7;letter-spacing:.04em;color:var(--rind)">Шьём под заказ: две-три недели · Сшил: Илья</p>'+
    '<div style="margin-top:28px;padding-top:28px;border-top:1px dashed var(--seam);display:flex;flex-direction:column;gap:18px"><h2 style="font-size:30px">Из чего и как</h2><dl style="margin:0;display:grid;grid-template-columns:120px minmax(0,1fr);column-gap:24px;row-gap:14px">'+mat+'</dl><button class="linkline" data-back="st1">Как мы шьём — на главной →</button></div></div></section>'+
-   '<section style="margin:96px 56px 0;padding-top:48px;border-top:1px dashed var(--seam);display:grid;grid-template-columns:420px minmax(0,1fr);gap:32px;align-items:start"><div style="display:flex;flex-direction:column;gap:18px"><h2 style="font-size:44px;line-height:1.08">Эта сумка через годы</h2><p style="margin:0;font-size:19px;line-height:1.55;font-weight:300">Первым потемнеет клапан — его касаются чаще всего. Ремень станет мягче и ляжет по плечу. Углы и торец начнут блестеть.</p><button class="linkline" data-back="time">Почему кожа так меняется — на главной →</button></div><div style="display:flex;flex-direction:column;gap:10px;position:relative">'+mini+'</div></section>'+
+   '<section class="c-years" style="margin:96px 56px 0;padding-top:48px;border-top:1px dashed var(--seam);display:grid;grid-template-columns:420px minmax(0,1fr);gap:32px;align-items:start"><div style="display:flex;flex-direction:column;gap:18px"><h2 style="font-size:44px;line-height:1.08">Эта сумка через годы</h2><p style="margin:0;font-size:19px;line-height:1.55;font-weight:300">Первым потемнеет клапан — его касаются чаще всего. Ремень станет мягче и ляжет по плечу. Углы и торец начнут блестеть.</p><button class="linkline" data-back="time">Почему кожа так меняется — на главной →</button></div><div style="display:flex;flex-direction:column;gap:10px;position:relative">'+mini+'</div></section>'+
    '<section style="margin:96px 56px 0;padding-top:48px;border-top:1px dashed var(--seam);display:grid;grid-template-columns:minmax(0,1fr) 480px;gap:72px;align-items:start"><div style="display:flex;flex-direction:column;gap:22px;max-width:620px"><h2 style="font-size:44px;line-height:1.08">Уход</h2><ol style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:16px">'+care+'</ol><div style="margin-top:28px;padding-top:24px;border-top:1px dashed var(--seam);display:flex;flex-direction:column;gap:10px"><p style="margin:0;font-size:22px;line-height:1.4;font-weight:300;font-style:italic">Если шов разойдётся, напишите нам. Мы знаем эту вещь до последнего стежка.</p><p class="mono" style="margin:0;font-size:12px;letter-spacing:.04em;color:var(--rind)">Шов и торец чиним бесплатно · Москва, пн–сб 11–19</p></div></div>'+
    '<div style="width:480px;height:600px;overflow:hidden">'+img('wax.jpg','Руки мастера натирают край сумки воском','width:100%;height:100%;object-fit:cover;display:block')+'</div></section><div style="height:120px"></div></div>';
 }
@@ -622,14 +624,16 @@ function onWheel(e){
 var tY=null, tX=null, tOnScale=false;
 var tFired=false;
 var tT=0;
-function onTouchStart(e){ if(e.touches.length!==1) return; tY=e.touches[0].clientY; tX=e.touches[0].clientX; tT=performance.now(); tFired=false; tOnScale=!!(e.target.closest && e.target.closest('.tscale')); }
+// Жест ловится на всём сайте (в том числе на шапке и полосе прогресса), кроме открытых карточки, корзины и меню.
+function overlayOpen(){ return S.cardOpen || !$('#cartSheet').hidden || ($('#menu') && !$('#menu').hidden); }
+function onTouchStart(e){ if(e.touches.length!==1 || overlayOpen()){ tY=null; return; } tY=e.touches[0].clientY; tX=e.touches[0].clientX; tT=performance.now(); tFired=false; tOnScale=!!(e.target.closest && e.target.closest('.tscale')); }
 function onTouchMove(e){
   if(S.rm || tY===null || tOnScale) return;
   var dy = tY - e.touches[0].clientY;
   var dx = tX - e.touches[0].clientX;
   if(!inFree()){
     e.preventDefault();
-    if(!tFired && Math.abs(dy) > 18 && Math.abs(dy) > Math.abs(dx)){ tFired=true; var d=dy>0?1:-1; if(S.tw) S.queued=d; else stepDir(d); }
+    if(!tFired && Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)){ tFired=true; var d=dy>0?1:-1; if(S.tw) S.queued=d; else stepDir(d); }
     return;
   }
   if(scroller.scrollTop <= FREE+1 && dy < 0){ e.preventDefault(); if(!tFired && dy < -28){ tFired=true; if(S.tw) S.queued=-1; else goTo(STOPS.length-2); } }
@@ -637,8 +641,8 @@ function onTouchMove(e){
 function onTouchEnd(e){
   if(S.rm || tY===null || tOnScale || tFired){ tY=null; return; }
   var t = e.changedTouches[0], dy = tY - t.clientY, dx = tX - t.clientX; tY=null;
-  var quick = performance.now()-tT < 300;
-  if(Math.abs(dy) < (quick?10:18) || Math.abs(dy) < Math.abs(dx)) return;
+  // Короткий или медленный свайп тоже листает: достаточно 8px по вертикали.
+  if(Math.abs(dy) < 8 || Math.abs(dy) < Math.abs(dx)) return;
   if(inFree()){ if(dy<0 && scroller.scrollTop <= FREE+1) goTo(STOPS.length-2); return; }
   if(S.tw){ S.queued = dy>0?1:-1; return; }
   stepDir(dy>0?1:-1);
@@ -689,12 +693,23 @@ function flipAnim(fromRect, toRect, fromSrc, toSrc, done){
   fl.children[1].animate([{opacity:0},{opacity:1}],{duration:D*.8,delay:D*.15,easing:'cubic-bezier(.45,0,.55,1)',fill:'forwards'});
   a.onfinish = function(){ done && done(); setTimeout(function(){ fl.animate([{opacity:1},{opacity:0}],{duration:250,fill:'forwards'}).onfinish=function(){fl.remove();}; },30); };
 }
-function openCard(fromEl, fromSrc){
+function fillCard(i){
+  var it = ITEMS[i]; S.cardItem = i;
+  $$('#card .c-lbl').forEach(function(e){ e.textContent = it.cardLbl; });
+  $$('#card .c-title').forEach(function(e){ e.textContent = it.name; });
+  $$('#card .c-line').forEach(function(e){ e.textContent = it.cardLine; });
+  $$('#card .c-price').forEach(function(e){ e.textContent = it.price; });
+  // «Эта сумка через годы» — только у сумки.
+  $$('#card .c-years').forEach(function(e){ e.hidden = i!==0; });
+  var im = $('#cardImg img'); if(im){ im.removeAttribute('data-src'); im.src = IMG+it.cardImg; im.alt = it.alt; im.style.objectPosition = i===0 ? '' : it.pos; }
+}
+function openCard(fromEl, fromSrc, i){
   var card=$('#card'), m=S.mode==='m';
+  fillCard(i||0);
   S.from = {y:scroller.scrollTop};
   card.scrollTop=0; card.hidden=false; S.cardOpen=true;
   var target = {x:0,y:m?64:88,w:m?390:760,h:m?488:950};
-  var cardImgSrc = IMG+'bag-now.jpg';
+  var cardImgSrc = IMG+ITEMS[S.cardItem].cardImg;
   if(S.rm){ card.style.opacity=1; card.focus(); return; }
   if(S.lite){ card.style.transition='opacity 350ms'; card.style.opacity=0; requestAnimationFrame(function(){card.style.opacity=1;}); setTimeout(function(){card.focus();},360); return; }
   card.classList.add('opening'); card.style.opacity=0;
@@ -714,10 +729,11 @@ function closeCard(thenGo){
   if(S.rm){ finish(); return; }
   if(S.lite){ card.animate([{opacity:1},{opacity:0}],{duration:300,fill:'forwards'}).onfinish=finish; return; }
   var imgEl = $('#cardImg'), fromR = rectIn(imgEl);
-  var toEl = m ? $('[data-id="i1"] .cam',stage) : $('.tile[data-item="0"] .ph',stage);
+  var n = S.cardItem;
+  var toEl = m ? $('[data-id="i'+(n+1)+'"] .cam',stage) : $('.tile[data-item="'+n+'"] .ph',stage);
   var toR = rectIn(toEl);
   card.animate([{opacity:1},{opacity:0}],{duration:600,easing:'cubic-bezier(.45,0,.55,1)',fill:'forwards'}).onfinish=finish;
-  flipAnim(fromR, toR, IMG+'bag-now.jpg', IMG+'item1.jpg');
+  flipAnim(fromR, toR, IMG+ITEMS[n].cardImg, IMG+ITEMS[n].img);
 }
 function fmtRub(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' ')+' ₽'; }
 function renderCart(state){
@@ -725,7 +741,10 @@ function renderCart(state){
   if(state==='demo'){
     inn.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><h2 id="cartTitle" class="h1" style="font-size:30px">Спасибо</h2><button class="xbtn" data-cart-close aria-label="Закрыть">×</button></div><p style="margin:0;font-size:20px;line-height:1.45;font-weight:300">Это Концепт: заказы здесь не принимаются.</p><button class="btn-dark" data-cart-close style="height:52px">Вернуться к вещам</button>'; return;
   }
-  var body = S.cart ? '<div style="display:grid;grid-template-columns:64px minmax(0,1fr);gap:14px;padding:14px 0;border-top:1px dashed var(--seam);border-bottom:1px dashed var(--seam)"><img src="'+IMG+'item1.jpg" alt="" style="width:64px;height:80px;object-fit:cover"><div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:20px;font-weight:300">Сумка через плечо</span><span class="mono" style="font-size:13px">28 000 ₽</span><span style="display:flex;align-items:center;gap:6px"><button class="xbtn" data-q="-1" aria-label="Меньше" style="width:36px;height:36px;font-size:16px;border:1px solid var(--seam)">−</button><span class="mono" style="min-width:24px;text-align:center">'+S.cart+'</span><button class="xbtn" data-q="1" aria-label="Больше" style="width:36px;height:36px;font-size:16px;border:1px solid var(--seam)">+</button></span></div></div><div style="display:flex;justify-content:space-between" class="mono"><span>Итого</span><span>'+fmtRub(28000*S.cart)+'</span></div><button class="btn-dark" id="checkout" style="height:52px">Оформить</button>'
+  var lines = ITEMS.map(function(it,i){ if(!S.qty[i]) return '';
+    return '<div style="display:grid;grid-template-columns:64px minmax(0,1fr);gap:14px;padding:14px 0;border-top:1px dashed var(--seam)"><img src="'+IMG+it.img+'" alt="" style="width:64px;height:80px;object-fit:cover;object-position:'+it.pos+'"><div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:20px;font-weight:300">'+it.name+'</span><span class="mono" style="font-size:13px">'+it.price+'</span><span style="display:flex;align-items:center;gap:6px"><button class="xbtn" data-q="-1" data-i="'+i+'" aria-label="Меньше" style="width:36px;height:36px;font-size:16px;border:1px solid var(--seam)">−</button><span class="mono" style="min-width:24px;text-align:center">'+S.qty[i]+'</span><button class="xbtn" data-q="1" data-i="'+i+'" aria-label="Больше" style="width:36px;height:36px;font-size:16px;border:1px solid var(--seam)">+</button></span></div></div>'; }).join('');
+  var sum = ITEMS.reduce(function(a,it,i){ return a + it.rub*S.qty[i]; },0);
+  var body = S.cart ? '<div style="display:flex;flex-direction:column;border-bottom:1px dashed var(--seam)">'+lines+'</div><div style="display:flex;justify-content:space-between" class="mono"><span>Итого</span><span>'+fmtRub(sum)+'</span></div><button class="btn-dark" id="checkout" style="height:52px">Оформить</button>'
     : '<p style="margin:0;font-size:18px;font-weight:300">Пока пусто.</p><button class="btn-dark" data-cart-close data-goc="'+(S.mode==='m'?'i1':'grid')+'" style="height:52px">Смотреть коллекцию</button>';
   inn.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><h2 id="cartTitle" class="h1" style="font-size:30px">Корзина</h2><button class="xbtn" data-cart-close aria-label="Закрыть корзину">×</button></div>'+body;
 }
@@ -740,9 +759,9 @@ function closeCart(){
   if(S.lastFocus && S.lastFocus.focus) S.lastFocus.focus({preventScroll:true});
 }
 function addToCart(){
-  S.cart++; setCount();
+  S.qty[S.cardItem]++; S.cart = S.qty.reduce(function(a,b){return a+b;},0); setCount();
   $$('#card .thread').forEach(function(th){ th.classList.remove('pull'); void th.offsetWidth; if(!S.rm) th.classList.add('pull'); });
-  status('Сумка в корзине · '+S.cart);
+  status(ITEMS[S.cardItem].name+' в корзине · '+S.cart);
 }
 
 /* ================= wiring ================= */
@@ -755,16 +774,17 @@ function wire(){
     if(end !== S.atEnd){ S.atEnd = end; window.dispatchEvent(new CustomEvent('concept:final', {detail:end})); }
   }, {passive:true});
   scroller.addEventListener('wheel', onWheel, {passive:false});
-  scroller.addEventListener('touchstart', onTouchStart, {passive:true});
-  scroller.addEventListener('touchmove', onTouchMove, {passive:false});
-  scroller.addEventListener('touchend', onTouchEnd, {passive:true});
+  site.addEventListener('touchstart', onTouchStart, {passive:true});
+  site.addEventListener('touchmove', onTouchMove, {passive:false});
+  site.addEventListener('touchend', onTouchEnd, {passive:true});
+  site.addEventListener('touchcancel', function(){ tY=null; }, {passive:true});
   wireScale();
   site.addEventListener('click', function(e){
     var t = e.target.closest('[data-go],[data-back],.open-item,.tile,.add,#hudCart,#cardCart,#hudMenu,#menuClose,#cardBack,[data-cart-close],[data-q],#checkout,#backdrop');
     if(!t) return;
     if(t.matches('a')) e.preventDefault();
     if(t.id==='backdrop'){ closeCart(); return; }
-    if(t.hasAttribute('data-q')){ S.cart = Math.max(0,S.cart+parseInt(t.getAttribute('data-q'),10)); setCount(); renderCart(); return; }
+    if(t.hasAttribute('data-q')){ var qi=parseInt(t.getAttribute('data-i'),10)||0; S.qty[qi] = Math.max(0,S.qty[qi]+parseInt(t.getAttribute('data-q'),10)); S.cart = S.qty.reduce(function(a,b){return a+b;},0); setCount(); renderCart(); return; }
     if(t.id==='checkout'){ renderCart('demo'); return; }
     if(t.hasAttribute('data-cart-close')){ var g=t.getAttribute('data-goc'); closeCart(); if(g){ if(S.cardOpen) closeCard(g); else goToId(g);} return; }
     if(t.id==='hudCart'||t.id==='cardCart'){ openCart(); return; }
@@ -776,9 +796,8 @@ function wire(){
     if(t.hasAttribute('data-go')){ var mnu=$('#menu'); if(mnu) mnu.hidden=true; goToId(t.getAttribute('data-go')); return; }
     if(t.classList.contains('open-item') || t.classList.contains('tile')){
       var i = parseInt(t.getAttribute('data-item'),10);
-      if(i!==0){ status('Карточка этой вещи появится позже'); return; }
-      var src = t.classList.contains('tile') ? t.querySelector('.ph') : $('[data-id="i1"] .cam',stage);
-      openCard(src, IMG+'item1.jpg'); return;
+      var src = t.classList.contains('tile') ? t.querySelector('.ph') : $('[data-id="i'+(i+1)+'"] .cam',stage);
+      openCard(src, IMG+ITEMS[i].img, i); return;
     }
   });
   // desktop hover light on tiles
